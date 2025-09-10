@@ -35,12 +35,14 @@ async def download_file(url: str = Query(...)):
         return FileResponse(cache_path, media_type="audio/mpeg")
 
     # ✅ If YouTube link → use yt-dlp (no ffmpeg needed)
+    # ✅ If YouTube link → use yt-dlp with cookies
     if "youtube.com" in url or "youtu.be" in url:
         ydl_opts = {
             "format": "bestaudio/best",
-            "outtmpl": cache_path,   # force .mp3 filename (even if actual codec is m4a/webm)
+            "outtmpl": cache_path,   # Save as .mp3 filename (actual codec may be m4a/webm)
             "quiet": True,
             "nocheckcertificate": True,
+            "cookiefile": "cookies.txt",   # <── add this line
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -48,6 +50,7 @@ async def download_file(url: str = Query(...)):
             return FileResponse(cache_path, media_type="audio/mpeg")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"yt-dlp error: {e}")
+
 
     # ✅ Otherwise, treat it as a direct file URL
     try:
@@ -66,3 +69,4 @@ async def download_file(url: str = Query(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {e}")
+
