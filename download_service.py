@@ -21,6 +21,11 @@ def get_cache_path(url: str) -> str:
     return os.path.join(CACHE_DIR, f"{url_hash}.mp3")
 
 
+@app.get("/")
+async def root():
+    return {"status": "✅ Download service running"}
+
+
 @app.get("/download")
 async def download_file(url: str = Query(...)):
     cache_path = get_cache_path(url)
@@ -29,19 +34,13 @@ async def download_file(url: str = Query(...)):
     if os.path.exists(cache_path):
         return FileResponse(cache_path, media_type="audio/mpeg")
 
-    # ✅ If YouTube link → use yt-dlp
+    # ✅ If YouTube link → use yt-dlp (no ffmpeg needed)
     if "youtube.com" in url or "youtu.be" in url:
         ydl_opts = {
             "format": "bestaudio/best",
-            "outtmpl": cache_path,
+            "outtmpl": cache_path,   # force .mp3 filename (even if actual codec is m4a/webm)
             "quiet": True,
-            "postprocessors": [
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "192",
-                }
-            ],
+            "nocheckcertificate": True,
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -50,7 +49,7 @@ async def download_file(url: str = Query(...)):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"yt-dlp error: {e}")
 
-    # ✅ Otherwise, treat it as a direct download URL
+    # ✅ Otherwise, treat it as a direct file URL
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=60) as response:
