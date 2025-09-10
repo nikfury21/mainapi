@@ -39,11 +39,18 @@ async def download_file(url: str = Query(...)):
     if "youtube.com" in url or "youtu.be" in url:
         ydl_opts = {
             "format": "bestaudio/best",
-            "outtmpl": cache_path,   # Save as .mp3 filename (actual codec may be m4a/webm)
+            "outtmpl": cache_path,
             "quiet": True,
             "nocheckcertificate": True,
-            "cookiefile": "cookies.txt",   # <── add this line
+            "cookiefile": "cookies.txt",
+            "headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0",
+                "Accept-Language": "en-US,en;q=0.5",
+            },
+            "extractor_args": {"youtube": {"player_client": ["web"]}},
+            "retries": 10,  # retry more if YouTube rate-limits
         }
+
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
@@ -69,4 +76,5 @@ async def download_file(url: str = Query(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {e}")
+
 
