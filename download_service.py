@@ -42,14 +42,15 @@ async def download_file(url: str = Query(...)):
             "outtmpl": cache_path,
             "quiet": True,
             "nocheckcertificate": True,
-            "cookiefile": "cookies.txt",
+            "cookiefile": COOKIES_PATH,   # ✅ absolute path, always found
             "headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0",
                 "Accept-Language": "en-US,en;q=0.5",
             },
             "extractor_args": {"youtube": {"player_client": ["web"]}},
-            "retries": 10,  # retry more if YouTube rate-limits
+            "retries": 10,
         }
+
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -76,5 +77,6 @@ async def download_file(url: str = Query(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {e}")
+
 
 
