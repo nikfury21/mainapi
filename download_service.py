@@ -12,6 +12,9 @@ app = FastAPI()
 CACHE_DIR = "/tmp/download_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
+# ✅ Absolute path to cookies.txt (must exist in same folder as this script)
+COOKIES_PATH = os.path.join(os.path.dirname(__file__), "cookies.txt")
+
 
 def get_cache_path(url: str) -> str:
     """
@@ -34,8 +37,7 @@ async def download_file(url: str = Query(...)):
     if os.path.exists(cache_path):
         return FileResponse(cache_path, media_type="audio/mpeg")
 
-    # ✅ If YouTube link → use yt-dlp (no ffmpeg needed)
-    # ✅ If YouTube link → use yt-dlp with cookies
+    # ✅ If YouTube link → use yt-dlp with cookies and anti-429 options
     if "youtube.com" in url or "youtu.be" in url:
         ydl_opts = {
             "format": "bestaudio/best",
@@ -51,14 +53,14 @@ async def download_file(url: str = Query(...)):
             "retries": 10,
         }
 
-
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             return FileResponse(cache_path, media_type="audio/mpeg")
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"yt-dlp error: {e}")
-
+            import traceback
+            tb = traceback.format_exc()
+            raise HTTPException(status_code=500, detail=f"yt-dlp error: {e}\n{tb}")
 
     # ✅ Otherwise, treat it as a direct file URL
     try:
@@ -76,7 +78,6 @@ async def download_file(url: str = Query(...)):
         return FileResponse(cache_path, media_type="audio/mpeg")
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {e}")
-
-
-
+        import traceback
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {e}\n{tb}")
