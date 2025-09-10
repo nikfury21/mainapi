@@ -12,8 +12,9 @@ app = FastAPI()
 CACHE_DIR = "/tmp/download_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-# ✅ Absolute path to cookies.txt (must exist in same folder as this script)
-COOKIES_PATH = os.path.join(os.path.dirname(__file__), "cookies.txt")
+# ✅ Hybrid cookies handling: absolute path if exists, else fallback to relative
+ABS_COOKIES_PATH = os.path.join(os.path.dirname(__file__), "cookies.txt")
+COOKIES_PATH = ABS_COOKIES_PATH if os.path.exists(ABS_COOKIES_PATH) else "cookies.txt"
 
 
 def get_cache_path(url: str) -> str:
@@ -44,7 +45,7 @@ async def download_file(url: str = Query(...)):
             "outtmpl": cache_path,
             "quiet": True,
             "nocheckcertificate": True,
-            "cookiefile": COOKIES_PATH,   # ✅ absolute path, always found
+            "cookiefile": COOKIES_PATH,  # ✅ hybrid path
             "headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0",
                 "Accept-Language": "en-US,en;q=0.5",
