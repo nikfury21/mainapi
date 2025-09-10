@@ -12,6 +12,10 @@ app = FastAPI()
 CACHE_DIR = "/tmp/download_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
+# ✅ Hybrid cookies handling: absolute path if exists, else fallback to relative
+ABS_COOKIES_PATH = os.path.join(os.path.dirname(__file__), "cookies.txt")
+COOKIES_PATH = ABS_COOKIES_PATH if os.path.exists(ABS_COOKIES_PATH) else "cookies.txt"
+
 
 def get_cache_path(url: str) -> str:
     """
@@ -34,14 +38,20 @@ async def download_file(url: str = Query(...)):
     if os.path.exists(cache_path):
         return FileResponse(cache_path, media_type="audio/mpeg")
 
-    # ✅ If YouTube link → use yt-dlp with cookies only (no anti-429 tweaks)
+    # ✅ If YouTube link → use yt-dlp with cookies and anti-429 options
     if "youtube.com" in url or "youtu.be" in url:
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": cache_path,
             "quiet": True,
             "nocheckcertificate": True,
-            "cookiefile": "cookies.txt",   # <── direct cookies.txt
+            "cookiefile": COOKIES_PATH,  # ✅ hybrid path
+            "headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0",
+                "Accept-Language": "en-US,en;q=0.5",
+            },
+            "extractor_args": {"youtube": {"player_client": ["web"]}},
+            "retries": 10,
         }
 
         try:
@@ -49,7 +59,9 @@ async def download_file(url: str = Query(...)):
                 ydl.download([url])
             return FileResponse(cache_path, media_type="audio/mpeg")
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"yt-dlp error: {e}")
+            import traceback
+            tb = traceback.format_exc()
+            raise HTTPException(status_code=500, detail=f"yt-dlp error: {e}\n{tb}")
 
     # ✅ Otherwise, treat it as a direct file URL
     try:
@@ -67,4 +79,6 @@ async def download_file(url: str = Query(...)):
         return FileResponse(cache_path, media_type="audio/mpeg")
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {e}")
+        import traceback
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {e}\n{tb}")
